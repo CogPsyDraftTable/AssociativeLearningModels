@@ -6,7 +6,6 @@ var LambdaP = .75;
 var Inum = 50;
 var vectorLength = 100;
 
-
 //make new cues
 var newcue = function(cueName,cuePeak,cuePeakVal,cueMinVal,cueSpread){
 this.cueName=cueName;
