@@ -1,0 +1,137 @@
+<html>
+<head>
+
+<link class="include" rel="stylesheet" type="text/css" hrf="../jquery.jqplot.min.css" />
+
+<script type="text/javascript" src="jquery-1.7.1.js"></script>
+<script type="text/javascript" src="jquery.flot.js"></script>
+<script type="text/javascript" src="RW.js"></script>
+
+
+
+
+<script type="text/javascript">
+$(document).ready(function(){
+	
+	
+	$("#RunIt").click(function(){
+		
+		Beta = $("#Beta").val();
+		LambdaP = $("#Lambda").val();
+		Inum = $("#Iterations").val();
+	
+		Cuelines = $("#CueDefine").val().split("\n");
+		for (b=0; b<=Cuelines.length-1; b++){
+			Cuelines[b]=Cuelines[b].split(" ");
+			Cuelines[b][1]=Number(Cuelines[b][1]);
+			window[Cuelines[b][0]] = new newcue(Cuelines[b][0],Cuelines[b][1]);
+			window[Cuelines[b][0]].cueHistorynew.length=0;
+		}
+		
+		Phaselines = $("#PhaseDefine").val().split("\n");
+		Phases = new Array('');
+		for (c=0; c<=Phaselines.length-1; c++) {
+			Phaselines[c]=Phaselines[c].split(" ");
+			//buildPnames = '';
+			//buildRewards = '';
+			BPN='';
+			for (d=0; d<=Phaselines[c].length-1; d++){
+			Phaselines[c][d]=Phaselines[c][d].split("=");
+			//buildPnames+=Phaselines[c][d][0] + ",";
+			//buildRewards+=Phaselines[c][d][1] + ",";
+			BPN+="[" + Phaselines[c][d] + "],";
+			}
+			BPN=BPN.slice(0,-1).split(",");
+			//buildPnames=buildPnames.slice(0,-1);
+			//buildPnames=buildPnames.split(",");
+			//buildRewards=buildRewards.slice(0,-1);
+			//buildRewards=buildRewards.split(",");
+			varname = "P" + c;
+			Phases[c]=varname;
+			//window[varname] = new newphase(Phaselines[c].length,buildPnames,buildRewards);
+			window[varname]=new newphase2(Phaselines[c].length,Phaselines[c]);
+		}	
+		
+		
+		
+  	   runmodel();
+  	
+  	    var newplots = new Array('');
+  	  	allplots = new Array(new Array(''));
+  	    allplots[0].length=0;
+  	    var labelplots = new Array(new Array(''));
+  	    var vbuild = '';
+  	  	for (e=0; e<=Cuelines.length-1; e++){
+  	  	allplots[e]=window[Cuelines[e][0]].cueHistorynew.filter(function(){return true});
+  	  	testobj = {label:Cuelines[e][0],data:allplots[e]};
+  	  	labelplots[e] = testobj;
+  	  	}
+  	  	
+  	    $.plot($("#placeholder"),labelplots);
+  	   
+  	});
+  	
+  	$("#AllProtocols").change(function(){
+  	$("#Beta").val(.1);
+  	$("#Lambda").val(.5);
+  	$("#Iterations").val(50);
+  	if ($(this).val() == 1) {
+  	$("#CueDefine").html("A .5");
+  	$("#PhaseDefine").html("A=+");
+  	}
+  	else if ($(this).val() == 2) {
+  	$("#CueDefine").html("A .5");
+  	$("textarea#PhaseDefine").text("A=+"+ "\n" + "A=-");
+  	}
+  	else if ($(this).val() == 3) {
+  	$("#CueDefine").html("A .5");
+  	$("textarea#PhaseDefine").text("A=+"+ "\n" + "A=-" + "\n" + "A=+");
+  	}
+  	else if ($(this).val() == 4) {
+  	$("#CueDefine").html("A .6" + "\n" + "B .4");
+  	$("textarea#PhaseDefine").text("A=+ B=+");
+  	}
+  	else if ($(this).val() == 5) {
+  	$("#CueDefine").html("A .5" + "\n" + "B .5");
+  	$("textarea#PhaseDefine").text("A=+"+ "\n" + "A=+ B=+");
+  	}
+  	});
+});
+
+</script>
+</head>
+<body>
+<div align="center">
+<p> Rescorla-Wagner Simulator</p>
+
+
+<form name="Pcalls">
+<select id="AllProtocols">
+<optgroup label="Protocols">
+<option>Pick a Protocol</option>
+<option value="1">Acquisition</option>
+<option value="2">Acquisition and Extinction</option>
+<option value="3">Re-acquisition</option>
+<option value="4">Overshadowing</option>
+<option value="5">Blocking</option>
+</optgroup>
+</select>
+<br>
+Beta: <input id="Beta"></input><br>
+Lambda: <input id="Lambda"></input><br>
+Iterations: <input id="Iterations"></input>
+</form>
+
+<form>
+<p>Enter new cues on each line</p><textarea cols="40" rows="5" id="CueDefine"> </textarea><br>
+<p>Enter new phases on each line</p><textarea cols="40" rows="5" id="PhaseDefine"> </textarea><br>
+</form>
+<p id="Ainfo"></p>
+<button id="RunIt">Run model</button>
+<p></p>
+<div id="placeholder" style="width:600px;height:300px;"></div>
+<div id="chart2" style="width:600px;height:300px;"></div>
+
+</body>
+</html>
+

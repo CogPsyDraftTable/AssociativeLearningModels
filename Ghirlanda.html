@@ -1,0 +1,263 @@
+<html>
+<head>
+
+<link class="include" rel="stylesheet" type="text/css" hrf="../jquery.jqplot.min.css" />
+
+<script type="text/javascript" src="jquery-1.7.1.js"></script>
+<script type="text/javascript" src="jquery.flot.js"></script>
+<script type="text/javascript" src="Ghirlanda.js"></script>
+
+
+
+
+<script type="text/javascript">
+$(document).ready(function(){
+	
+	//script to run model
+	$("#RunIt").click(function(){
+		
+		vectorLength = Number($("#Vlength").val());
+		Alpha = Number($("#Alpha").val());		//read in beta value
+		LambdaP = Number($("#Lambda").val());	//	read in Lambda
+		Inum = Number($("#Iterations").val());	//read in number of iterations to run
+	
+		//process field that defines cues
+		Cuelines = $("#CueDefine").val().split("\n");
+		for (b=0; b<=Cuelines.length-1; b++){
+			Cuelines[b]=Cuelines[b].split(" ");
+			Cuelines[b][1]=Number(Cuelines[b][1]);
+			Cuelines[b][2]=Number(Cuelines[b][2]);
+			Cuelines[b][3]=Number(Cuelines[b][3]);
+			Cuelines[b][4]=Number(Cuelines[b][4]);
+			window[Cuelines[b][0]] = new newcue(Cuelines[b][0],Cuelines[b][1],Cuelines[b][2],Cuelines[b][3],Cuelines[b][4]);
+			window[Cuelines[b][0]].cueHistorynew.length=0;
+		}
+		
+		Compoundlines = $("#CompDefine").val().split("\n");
+		if (Compoundlines != ""){
+		for (b=0; b<=Compoundlines.length-1; b++){
+			comname=[''];
+			for (c=0;c<Compoundlines[b].length;c++) {
+				comname[c]=Compoundlines[b][c];
+			}
+			window[Compoundlines[b]] = new newcompound(comname);
+			window[Compoundlines[b]].cueHistorynew.length=0;
+			Cuelines.push([Compoundlines[b]]);
+		}
+		}
+		
+		//process field that defines phases
+		Phaselines = $("#PhaseDefine").val().split("\n");
+		Phases = new Array('');
+		for (c=0; c<=Phaselines.length-1; c++) {
+			Phaselines[c]=Phaselines[c].split(" ");
+			BPN='';
+			for (d=0; d<=Phaselines[c].length-1; d++){
+			Phaselines[c][d]=Phaselines[c][d].split("=");
+			BPN+="[" + Phaselines[c][d] + "],";
+			}
+			BPN=BPN.slice(0,-1).split(",");
+			varname = "P" + c;
+			Phases[c]=varname;
+			window[varname]=new newphase2(Phaselines[c].length,Phaselines[c]);
+		}	
+		
+		
+		//run the model script with assigned parameters from web forms
+  	   runmodel();
+  	
+  		//plot the associative strengths for each cue and phase
+  	    var newplots = new Array('');
+  	  	allplots = new Array(new Array(''));
+  	    allplots[0].length=0;
+  	    var labelplots = new Array(new Array(''));
+  	    var vbuild = '';
+  	  	for (e=0; e<=Cuelines.length-1; e++){
+  	  	allplots[e]=window[Cuelines[e][0]].cueHistorynew.filter(function(){return true});
+  	  	testobj = {label:Cuelines[e][0],data:allplots[e]};
+  	  	labelplots[e] = testobj;
+  	  	}
+  	  	
+  	    $.plot($("#placeholder"),labelplots);
+  	    
+  	    Testlines = $("#TestDefine").val().split("\n");
+		if (Testlines != ""){
+		printout="Test Results <br />";
+		for (b=0; b<=Testlines.length-1; b++){
+			temprs = dotproduct(window[Testlines[b]].cueVector,weight);
+			printout += Testlines[b] + ": " + temprs + "<br \>";
+		}
+		$("#TestResults").html(printout);
+		}
+  	   
+  	});
+  	
+  	$("#AllProtocols").change(function(){
+  	$("#Vlength").val(100);
+  	$("#Alpha").val(.1);
+  	$("#Lambda").val(.75);
+  	$("#Iterations").val(50);
+  	//acquisition
+  	if ($(this).val() == 1) {
+  	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("#PhaseDefine").html("A=+ X=-");
+  	$("#TestDefine").html("A");
+  	}
+  	//acquisition & extinction
+  	else if ($(this).val() == 2) {
+   	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("#PhaseDefine").html("A=+ X=-" + "\n" + "A=- X=-");
+  	$("#TestDefine").html("A");
+  	}
+  	//re-acquistion
+  	else if ($(this).val() == 3) {
+  	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#PhaseDefine").text("A=+ X=-"+ "\n" + "A=- X=-" + "\n" + "A=+ X=-");
+  	$("#TestDefine").html("A");
+  	}
+  	//conditioned Inhibition Direct Test
+  	else if ($(this).val() == 4) {
+  	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("A=+ AB=- X=-");
+  	$("#TestDefine").html("A" + "\n" + "B");
+  	}
+  	//conditioned Inhibition Summation Test
+  	else if ($(this).val() == 5) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB" + "\n" + "CD" + "\n" + "BC");
+  	$("textarea#PhaseDefine").text("A=+ AB=- X=-" + "\n" + "C=+ X=-");
+  	$("#TestDefine").html("C" + "\n" + "CD" + "\n" + "BC");
+  	}
+  	//Backward Conditioned Inhibition Control
+  	else if ($(this).val() == 6) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("AB=- X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Backward Conditioned Inhibition
+  	else if ($(this).val() == 7) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("AB=- X=-" + "\n" + "A=+ X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Backward Conditioned Inhibition Summation Test
+  	else if ($(this).val() == 8) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB" + "\n" + "CD" + "\n" + "BC");
+  	$("textarea#PhaseDefine").text("AB=- X=-" + "\n" + "A=+ X=- C=+");
+  	$("#TestDefine").html("C" + "\n" + "CD" + "\n" + "BC");
+  	}
+  	//Overshadowing
+  	else if ($(this).val() == 9) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("AB=+ X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Unovershadowing
+  	else if ($(this).val() == 10) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("AB=+ X=-" + "\n" + "A=- X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Blocking
+  	else if ($(this).val() == 11) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("A=+ X=-" + "\n" + "AB=+ X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Unblocking
+  	else if ($(this).val() == 12) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("A=+ X=-" + "\n" + "AB=+ X=-"+ "\n" + "A=- X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Backward blocking
+  	else if ($(this).val() == 13) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB");
+  	$("textarea#PhaseDefine").text("AB=+ X=-" + "\n" + "A=+ X=-");
+  	$("#TestDefine").html("B");
+  	}
+  	//Superconditioning
+  	else if ($(this).val() == 14) {
+	$("#CueDefine").html("A 13 .65 .1 3" + "\n" + "B 38 .65 .1 3" + "\n" + "C 63 .65 .1 3" + "\n" + "D 88 .65 .1 3" + "\n" + "X 50 0 .1 3");
+  	$("textarea#CompDefine").text("AB" + "\n" + "BC");
+  	$("textarea#PhaseDefine").text("A=+ X=- AB=-" + "\n" + "BC=+ X=-");
+  	$("#TestDefine").html("C");
+  	}
+  	
+  	
+  	
+  	});
+});
+
+</script>
+</head>
+<body>
+<div align="center">
+<p> Ghirlanda (2005) Simulator</p>
+
+
+<form name="Pcalls">
+<select id="AllProtocols">
+<optgroup label="Protocols">
+<option>Pick a Protocol</option>
+<option value="1">Acquisition</option>
+<option value="2">Acquisition and Extinction</option>
+<option value="3">Re-acquisition</option>
+<option value="4">Conditioned Inhibition Direct Test</option>
+<option value="5">Conditioned Inhibition Summation Test</option>
+<option value="6">Backward Conditioned Inhibition Control</option>
+<option value="7">Backward Conditioned Inhibition</option>
+<option value="8">Backward Conditioned Inhibition Summation Test</option>
+<option value="9">Overshadowing</option>
+<option value="10">Unovershadowing</option>
+<option value="11">Blocking</option>
+<option value="12">Unblocking</option>
+<option value="13">Backward blocking</option>
+<option value="14">Superconditioning</option>
+</optgroup>
+</select>
+<br>
+Cue Vector Length: <input id="Vlength"></input><br>
+Alpha: <input id="Alpha"></input><br>
+Lambda: <input id="Lambda"></input><br>
+Iterations: <input id="Iterations"></input>
+</form>
+
+<form>
+<table>
+<tr>
+<td>
+<label style="vertical-align:top">Enter Cues on each line<br /></label><textarea cols="30" rows="5" id="CueDefine"></textarea>
+</td>
+<td>
+<label style="vertical-align:top">Enter Compounds on each line<br /></label><textarea cols="30" rows="5" id="CompDefine"></textarea>
+</td>
+</tr>
+<tr>
+<td>
+<p>Enter Phases on each line</p><textarea cols="30" rows="5" id="PhaseDefine"></textarea><br>
+</td>
+<td>
+<p>Enter Cue names for Tests</p><textarea cols="30" rows="5" id="TestDefine"></textarea><br>
+</td>
+</tr>
+</table>
+</form>
+<p id="Ainfo"></p>
+<button id="RunIt">Run model</button>
+<p></p>
+<div id="placeholder" style="width:600px;height:300px;"></div>
+<p id="TestResults"></p>
+
+</body>
+</html>
+
